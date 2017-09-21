@@ -150,6 +150,10 @@ namespace LIDsExtractJob
             return Items;
         }
 
+
+
+
+
         public static void AddItems(params Item[] newItems)
         {
             using (SQLiteConnection conn = new SQLiteConnection(Config.DBConnString))
