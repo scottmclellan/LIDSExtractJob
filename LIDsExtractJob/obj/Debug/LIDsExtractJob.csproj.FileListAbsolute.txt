@@ -1,0 +1,12 @@
+D:\Work\Custom\LIDsExtractJob\LIDsExtractJob\bin\Debug\LIDsExtractJob.exe.config
+D:\Work\Custom\LIDsExtractJob\LIDsExtractJob\bin\Debug\LIDsExtractJob.exe
+D:\Work\Custom\LIDsExtractJob\LIDsExtractJob\bin\Debug\LIDsExtractJob.pdb
+D:\Work\Custom\LIDsExtractJob\LIDsExtractJob\obj\Debug\LIDsExtractJob.csprojResolveAssemblyReference.cache
+D:\Work\Custom\LIDsExtractJob\LIDsExtractJob\obj\Debug\LIDsExtractJob.exe
+D:\Work\Custom\LIDsExtractJob\LIDsExtractJob\obj\Debug\LIDsExtractJob.pdb
+D:\Work\Custom\LIDsExtractJob\LIDsExtractJob\bin\Debug\geckodriver.exe
+D:\Work\Custom\LIDsExtractJob\LIDsExtractJob\bin\Debug\System.Data.SQLite.dll
+D:\Work\Custom\LIDsExtractJob\LIDsExtractJob\bin\Debug\System.Data.SQLite.xml
+D:\Work\Custom\LIDsExtractJob\LIDsExtractJob\bin\Debug\HtmlAgilityPack.dll
+D:\Work\Custom\LIDsExtractJob\LIDsExtractJob\bin\Debug\HtmlAgilityPack.pdb
+D:\Work\Custom\LIDsExtractJob\LIDsExtractJob\bin\Debug\HtmlAgilityPack.xml
