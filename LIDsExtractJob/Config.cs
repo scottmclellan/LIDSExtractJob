@@ -33,5 +33,8 @@ namespace LIDsExtractJob
         public static string SMTPServer { get => ConfigurationManager.AppSettings["SMTPServer"].ToString(); }
         public static string SMTPUserName { get => ConfigurationManager.AppSettings["SMTPUserName"].ToString(); }
         public static string SMTPPassword { get => ConfigurationManager.AppSettings["SMTPPassword"].ToString(); }
+
+        public static int MaxPageSize { get => int.Parse(ConfigurationManager.AppSettings["MaxPageSize"]?.ToString() ?? "240"); }
+
     }
 }

@@ -56,12 +56,12 @@ namespace LIDsExtractJob
                 SaveReport(ItemReport);
                 //SendEmail(newItemReport);
             }
-        }       
+        }
 
         public static List<Product> GetCurrentItems()
         {
 
-            Uri lidsUri = new Uri(Config.LidsUrl);
+            Uri lidsUri = new Uri($"{Config.LidsUrl}?pageSize={Config.MaxPageSize}");
 
             var web = new CustomWebClient();
 
@@ -72,37 +72,57 @@ namespace LIDsExtractJob
             htmlDoc.LoadHtml(html);
 
             //get number of products
-            var numberOfProductsElement = htmlDoc.DocumentNode.SelectSingleNode("//span[contains(@class, 'pagination-bar-result-number')]");
+            var totalProductsElement = htmlDoc.DocumentNode.SelectSingleNode("//span[contains(@class, 'pagination-bar-result-number')]");
 
-            var numberOfProducts = Regex.Replace(numberOfProductsElement.InnerText, "[^0-9]", ""); 
+            var totalProducts = int.Parse(Regex.Replace(totalProductsElement.InnerText, "[^0-9]", ""));
 
-            var products = htmlDoc.DocumentNode.SelectNodes("//li[contains(@class, 'product-item')]");           
+            var productsRetrieved = new List<Product>();
 
-            return products.Select(product =>
+            int pageNumber = 1;
+
+            while (productsRetrieved.Count < totalProducts)
             {
-                var idElement = product.SelectSingleNode(".//a[@class='js-reference-item']");
-                var priceElement = product.SelectSingleNode(".//span[@class='price']");
-                var oldPriceElement = product.SelectSingleNode(".//span[@class='oldprice']");
-                var imageElement = product.SelectSingleNode(".//img[@class='image-medium']"); 
-                var detailPathElement = product.SelectSingleNode(".//a[@class='thumb']");
-
-                var id = idElement.Attributes["data-productcode"].Value.ToInt();
-                var price = priceElement.InnerText.ToDecimalFromCurrency();
-                var oldPrice = oldPriceElement == null ? price : oldPriceElement.InnerText.ToDecimalFromCurrency();
-                var imageUrl = "https:" + imageElement.Attributes["src"].Value;
-                var name =  imageElement.Attributes["alt"].Value;
-                var detailPath = "https://" + lidsUri.Host + detailPathElement.Attributes["href"].Value;
-
-                return new Product()
+                if (pageNumber > 1)//get next page of data
                 {
-                    Id = id,
-                    Price = price,
-                    OldPrice = oldPrice,
-                    ImageUrl = imageUrl,
-                    Name = name,
-                    DetailPath = detailPath
-                };
-            }).ToList();                     
+                    lidsUri = new Uri($"{Config.LidsUrl}?pageSize={Config.MaxPageSize}&page={pageNumber}");
+
+                    html = web.DownloadString(lidsUri);
+
+                    htmlDoc.LoadHtml(html);
+                }
+
+                var htmlProducts = htmlDoc.DocumentNode.SelectNodes("//li[contains(@class, 'product-item')]");
+
+                productsRetrieved.AddRange(htmlProducts.Select(product =>
+                {
+                    var idElement = product.SelectSingleNode(".//a[@class='js-reference-item']");
+                    var priceElement = product.SelectSingleNode(".//span[@class='price']");
+                    var oldPriceElement = product.SelectSingleNode(".//span[@class='oldprice']");
+                    var imageElement = product.SelectSingleNode(".//img[@class='image-medium']");
+                    var detailPathElement = product.SelectSingleNode(".//a[@class='thumb']");
+
+                    var id = idElement.Attributes["data-productcode"].Value.ToInt();
+                    var price = priceElement.InnerText.ToDecimalFromCurrency();
+                    var oldPrice = oldPriceElement == null ? price : oldPriceElement.InnerText.ToDecimalFromCurrency();
+                    var imageUrl = "https:" + imageElement.Attributes["src"].Value;
+                    var name = imageElement.Attributes["alt"].Value;
+                    var detailPath = "https://" + lidsUri.Host + detailPathElement.Attributes["href"].Value;
+
+                    return new Product()
+                    {
+                        Id = id,
+                        Price = price,
+                        OldPrice = oldPrice,
+                        ImageUrl = imageUrl,
+                        Name = name,
+                        DetailPath = detailPath
+                    };
+                }).ToList());
+
+                pageNumber++;                
+            }
+
+            return productsRetrieved;
         }
 
         public static List<Product> GetExistingProducts()
@@ -128,7 +148,7 @@ namespace LIDsExtractJob
                 }
                 #endregion
 
-                string sql = "SELECT id, name, price, oldprice, imageurl, detailpath, createddate, modifieddate FROM Products";
+                string sql = "SELECT id, name, price, oldprice, imageurl, detailpath, createddate, modifieddate, deleteddate FROM Products";
                 using (SQLiteCommand command = new SQLiteCommand(sql, conn))
                 {
                     using (SQLiteDataReader reader = command.ExecuteReader())
@@ -163,7 +183,7 @@ namespace LIDsExtractJob
 
                 foreach (var Item in newItems)
                 {
-                    string sql = $"INSERT INTO Items (id, name, price, oldprice, imageurl, detailpath, createddate) VALUES ({Item.Id}, '{Item.Name.SQLPrep()}',{Item.Price},{Item.OldPrice},'{Item.ImageUrl.SQLPrep()}','{Item.DetailPath.SQLPrep()}', '{DateTime.Now.ToSQLFormat()}');";
+                    string sql = $"INSERT INTO Products (id, name, price, oldprice, imageurl, detailpath, createddate) VALUES ({Item.Id}, '{Item.Name.SQLPrep()}',{Item.Price},{Item.OldPrice},'{Item.ImageUrl.SQLPrep()}','{Item.DetailPath.SQLPrep()}', '{DateTime.Now.ToSQLFormat()}');";
 
                     using (SQLiteCommand command = new SQLiteCommand(sql, conn))
                     {
@@ -180,9 +200,9 @@ namespace LIDsExtractJob
             {
                 conn.Open();
 
-                foreach (var Item in deleteItems)
+                foreach (var Item in deleteItems.Where(x=> x.DeletedDate == null))
                 {
-                    string sql = $"UPDATE Items SET deleteddate = '{DateTime.Now.ToSQLFormat()}' WHERE id = {Item.Id};";
+                    string sql = $"UPDATE Products SET deleteddate = '{DateTime.Now.ToSQLFormat()}' WHERE id = {Item.Id};";
 
                     using (SQLiteCommand command = new SQLiteCommand(sql, conn))
                     {
@@ -201,7 +221,7 @@ namespace LIDsExtractJob
 
                 foreach (var Item in updatedItems)
                 {
-                    string sql = $"UPDATE Items SET name = '{Item.Name.SQLPrep()}', price = {Item.Price}, oldprice = {Item.OldPrice}, imageurl = '{Item.ImageUrl.SQLPrep()}', detailpath = '{Item.DetailPath.SQLPrep()}', modifieddate = '{DateTime.Now.ToSQLFormat()}' WHERE id = {Item.Id};";
+                    string sql = $"UPDATE Products SET name = '{Item.Name.SQLPrep()}', price = {Item.Price}, oldprice = {Item.OldPrice}, imageurl = '{Item.ImageUrl.SQLPrep()}', detailpath = '{Item.DetailPath.SQLPrep()}', modifieddate = '{DateTime.Now.ToSQLFormat()}, deleteddate = null WHERE id = {Item.Id};";
 
                     using (SQLiteCommand command = new SQLiteCommand(sql, conn))
                     {
