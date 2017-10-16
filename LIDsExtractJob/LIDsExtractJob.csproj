@@ -56,7 +56,7 @@
     <Compile Include="CustomWebClient.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="DTO\Hat.cs" />
+    <Compile Include="DTO\Product.cs" />
     <Compile Include="Extensions\FormattingExtensions.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

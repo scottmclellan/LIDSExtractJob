@@ -23,15 +23,15 @@ namespace LIDsExtractJob
 
             Console.WriteLine($"{currentItems.Count} Items found.");
 
-            var savedItems = GetSavedItems();
+            var savedItems = GetExistingProducts();
 
             Console.WriteLine($"{savedItems.Count} Items previously saved.");
 
-            var deletedItems = savedItems.Except(currentItems, new ItemComparer()).ToList();
+            var deletedItems = savedItems.Except(currentItems, new ProductComparer()).ToList();
 
             Console.WriteLine($"{deletedItems.Count} Items to be deleted.");
 
-            var newItems = currentItems.Except(savedItems, new ItemComparer()).ToList();
+            var newItems = currentItems.Except(savedItems, new ProductComparer()).ToList();
 
             Console.WriteLine($"{newItems.Count} Items to be added.");
 
@@ -58,7 +58,7 @@ namespace LIDsExtractJob
             }
         }       
 
-        public static List<Item> GetCurrentItems()
+        public static List<Product> GetCurrentItems()
         {
 
             Uri lidsUri = new Uri(Config.LidsUrl);
@@ -93,7 +93,7 @@ namespace LIDsExtractJob
                 var name =  imageElement.Attributes["alt"].Value;
                 var detailPath = "https://" + lidsUri.Host + detailPathElement.Attributes["href"].Value;
 
-                return new Item()
+                return new Product()
                 {
                     Id = id,
                     Price = price,
@@ -105,9 +105,9 @@ namespace LIDsExtractJob
             }).ToList();                     
         }
 
-        public static List<Item> GetSavedItems()
+        public static List<Product> GetExistingProducts()
         {
-            List<Item> Items = new List<Item>();
+            List<Product> Items = new List<Product>();
 
             if (!File.Exists(Config.DBName))
             {
@@ -119,21 +119,21 @@ namespace LIDsExtractJob
                 conn.Open();
 
                 #region Create Table
-                if (!TableExists(conn, "Items"))
+                if (!TableExists(conn, "Products"))
                 {
-                    using (SQLiteCommand cmd = new SQLiteCommand("create table Items (id int, name varchar(200), price real, oldprice real, imageurl varchar(200), detailpath varchar(200), createddate varchar(50), modifieddate varchar(50), deleteddate varchar(50))", conn))
+                    using (SQLiteCommand cmd = new SQLiteCommand("create table Products (id int, name varchar(200), price real, oldprice real, imageurl varchar(200), detailpath varchar(200), createddate varchar(50), modifieddate varchar(50), deleteddate varchar(50))", conn))
                     {
                         cmd.ExecuteNonQuery();
                     }
                 }
                 #endregion
 
-                string sql = "SELECT id, name, price, oldprice, imageurl, detailpath, createddate, modifieddate FROM Items WHERE deleteddate is null;";
+                string sql = "SELECT id, name, price, oldprice, imageurl, detailpath, createddate, modifieddate FROM Products";
                 using (SQLiteCommand command = new SQLiteCommand(sql, conn))
                 {
                     using (SQLiteDataReader reader = command.ExecuteReader())
                         while (reader.Read())
-                            Items.Add(new Item()
+                            Items.Add(new Product()
                             {
                                 Id = reader["id"].ToString().ToInt(),
                                 Name = reader["name"].ToString(),
@@ -142,7 +142,8 @@ namespace LIDsExtractJob
                                 ImageUrl = reader["imageurl"].ToString(),
                                 DetailPath = reader["detailpath"].ToString(),
                                 CreatedDate = reader["createddate"].ToString().ToDateTime(),
-                                ModifiedDate = reader["modifieddate"].ToString().ToDateTime()
+                                ModifiedDate = reader["modifieddate"].ToString().ToDateTime(),
+                                DeletedDate = reader["deleteddate"].ToString().ToDateTime()
                             });
                 }
             }
@@ -154,7 +155,7 @@ namespace LIDsExtractJob
 
 
 
-        public static void AddItems(params Item[] newItems)
+        public static void AddItems(params Product[] newItems)
         {
             using (SQLiteConnection conn = new SQLiteConnection(Config.DBConnString))
             {
@@ -173,7 +174,7 @@ namespace LIDsExtractJob
             }
         }
 
-        public static void DeleteItems(params Item[] deleteItems)
+        public static void DeleteItems(params Product[] deleteItems)
         {
             using (SQLiteConnection conn = new SQLiteConnection(Config.DBConnString))
             {
@@ -192,7 +193,7 @@ namespace LIDsExtractJob
             }
         }
 
-        public static void UpdateItems(params Item[] updatedItems)
+        public static void UpdateItems(params Product[] updatedItems)
         {
             using (SQLiteConnection conn = new SQLiteConnection(Config.DBConnString))
             {
@@ -228,7 +229,7 @@ namespace LIDsExtractJob
             return false;
         }
 
-        public static string GetEmailBody(IEnumerable<Item> newItems, IEnumerable<Item> updatedItems)
+        public static string GetEmailBody(IEnumerable<Product> newItems, IEnumerable<Product> updatedItems)
         {
             StringBuilder sb = new StringBuilder();
 

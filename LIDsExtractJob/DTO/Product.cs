@@ -6,10 +6,11 @@ using System.Threading.Tasks;
 
 namespace LIDsExtractJob
 {
-    public class Item 
+    public class Product 
     {
         public int Id { get; set; }
         public string Name { get; set; }
+        public string Category { get; set; }
 
         public  string ImageUrl { get; set; }
 
@@ -25,14 +26,14 @@ namespace LIDsExtractJob
        
     }
 
-    public class ItemComparer : IEqualityComparer<Item>
+    public class ProductComparer : IEqualityComparer<Product>
     {
-        public bool Equals(Item x, Item y)
+        public bool Equals(Product x, Product y)
         {
             return x.Id == y.Id;
         }
 
-        public int GetHashCode(Item obj)
+        public int GetHashCode(Product obj)
         {
             return obj.Id.GetHashCode() * 17;
         }

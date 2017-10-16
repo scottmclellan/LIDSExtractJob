@@ -50,7 +50,7 @@ namespace LIDsExtractJob.Extensions
 
         public static string ToSQLFormat(this DateTime dateTime)
         {
-            return dateTime.ToString("yyyy-MM-dd hh:mm:ss");
+            return dateTime.ToString("yyyy-MM-dd HH:mm:ss");
         }
 
         public static DateTime? ToDateTime(this string datetimeValue)
