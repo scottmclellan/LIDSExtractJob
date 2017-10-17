@@ -26,6 +26,12 @@ namespace LIDsExtractJob
        
     }
 
+    public class ProductList : List<Product>
+    {
+        public IEnumerable<Product> Active { get => this.Where(x => x.DeletedDate == null); }
+        public IEnumerable<Product> Deleted { get => this.Where(x => x.DeletedDate != null); }
+    }
+
     public class ProductComparer : IEqualityComparer<Product>
     {
         public bool Equals(Product x, Product y)

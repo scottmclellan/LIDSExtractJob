@@ -11,6 +11,7 @@ using System.Data.SQLite;
 using System.Diagnostics;
 using HtmlAgilityPack;
 using System.Text.RegularExpressions;
+using System.Net.NetworkInformation;
 
 namespace LIDsExtractJob
 {
@@ -19,49 +20,58 @@ namespace LIDsExtractJob
         static void Main(string[] args)
         {
 
-            var currentItems = GetCurrentItems();
-
-            Console.WriteLine($"{currentItems.Count} Items found.");
-
-            var savedItems = GetExistingProducts();
-
-            Console.WriteLine($"{savedItems.Count} Items previously saved.");
-
-            var deletedItems = savedItems.Except(currentItems, new ProductComparer()).ToList();
-
-            Console.WriteLine($"{deletedItems.Count} Items to be deleted.");
-
-            var newItems = currentItems.Except(savedItems, new ProductComparer()).ToList();
-
-            Console.WriteLine($"{newItems.Count} Items to be added.");
-
-            var updatedItems = currentItems.Where(x =>
+            try
             {
-                var match = savedItems.FirstOrDefault(y => y.Id == x.Id);
+                var currentItems = GetCurrentItems();
 
-                return (match != null && match.Price != x.Price);
-            }).ToList();
+                Console.WriteLine($"{currentItems.Count} Items found."); 
 
-            Console.WriteLine($"{updatedItems.Count} Items to be updated.");
+                var savedItems = GetExistingProducts();
 
-            AddItems(newItems.ToArray());
-            DeleteItems(deletedItems.ToArray());
-            UpdateItems(updatedItems.ToArray());
+                Console.WriteLine($"{savedItems.Active.Count()} Items previously saved.");
+
+                var deletedItems = savedItems.Active.Except(currentItems, new ProductComparer()).ToList();
+
+                Console.WriteLine($"{deletedItems.Count} Items to be deleted.");
+
+                var newItems = currentItems.Except(savedItems, new ProductComparer()).ToList();
+
+                Console.WriteLine($"{newItems.Count} Items to be added.");
+
+                var updatedItems = currentItems.Where(x =>
+                {
+                    var match = savedItems.FirstOrDefault(y => y.Id == x.Id);
+
+                    return (match != null && (match.Price != x.Price || match.DeletedDate != x.DeletedDate));
+                }).ToList();
+
+                Console.WriteLine($"{updatedItems.Count} Items to be updated.");
+
+                AddItems(newItems.ToArray());
+                DeleteItems(deletedItems.ToArray());
+                UpdateItems(updatedItems.ToArray());
 
 
-            if (newItems.Any() || updatedItems.Any())
-            {
-                var ItemReport = GetEmailBody(newItems, updatedItems);
+                if (newItems.Any() || updatedItems.Any())
+                {
+                    var ItemReport = GetEmailBody(newItems, updatedItems);
 
-                SaveReport(ItemReport);
-                //SendEmail(newItemReport);
+                    SaveReport(ItemReport);
+                    //SendEmail(newItemReport);
+                }
             }
+            catch(Exception ex)
+            {
+                Console.Write(ex.ToString());
+            }
+          
         }
 
-        public static List<Product> GetCurrentItems()
+        public static ProductList GetCurrentItems()
         {
+            var productsRetrieved = new ProductList();
 
-            Uri lidsUri = new Uri($"{Config.LidsUrl}?pageSize={Config.MaxPageSize}");
+            Uri lidsUri = new Uri($"{Config.LidsUrl}?pageSize={Config.MaxPageSize}");            
 
             var web = new CustomWebClient();
 
@@ -74,9 +84,7 @@ namespace LIDsExtractJob
             //get number of products
             var totalProductsElement = htmlDoc.DocumentNode.SelectSingleNode("//span[contains(@class, 'pagination-bar-result-number')]");
 
-            var totalProducts = int.Parse(Regex.Replace(totalProductsElement.InnerText, "[^0-9]", ""));
-
-            var productsRetrieved = new List<Product>();
+            var totalProducts = int.Parse(Regex.Replace(totalProductsElement.InnerText, "[^0-9]", ""));           
 
             int pageNumber = 1;
 
@@ -125,9 +133,9 @@ namespace LIDsExtractJob
             return productsRetrieved;
         }
 
-        public static List<Product> GetExistingProducts()
+        public static ProductList GetExistingProducts()
         {
-            List<Product> Items = new List<Product>();
+            ProductList Items = new ProductList();
 
             if (!File.Exists(Config.DBName))
             {
